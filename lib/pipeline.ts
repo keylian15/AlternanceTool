@@ -24,7 +24,7 @@ export async function runFetch(days?: number) {
       : days ? new Date(Date.now() - days * 864e5)
       : last ? new Date(last.started_at) : new Date(Date.now() - 7 * 864e5);
 
-    const { offers: raw, perZone } = await fetchLba();
+    const { offers: raw, perZone, received } = await fetchLba();
     const fresh = raw.filter((o) => !o.publishedAt || new Date(o.publishedAt) >= since);
 
     const merged = new Map<string, RawOffer & { sources: SourceRef[] }>();
@@ -63,8 +63,8 @@ export async function runFetch(days?: number) {
     }
 
     await q`update offers set status = 'expired' where status in ('new', 'scored') and expires_at is not null and expires_at < now()`;
-    const zones = Object.entries(perZone).map(([n, c]) => `${n} ${c}`).join(', ');
-    const message = `${raw.length} reçues (${zones}), ${fresh.length} dans la fenêtre (${days === 0 ? 'sans limite de date' : 'depuis le ' + since.toLocaleDateString('fr-FR')}), ${merged.size} uniques, ${existing.length} déjà connues, ${inserted} nouvelles dont ${excluded} écartées d'office`;
+    const zones = Object.entries(perZone).map(([n, c]) => `${n} ${c.kept}/${c.received}`).join(', ');
+    const message = `${received} reçues, ${raw.length} informatiques (gardées/reçues par zone : ${zones}), ${fresh.length} dans la fenêtre (${days === 0 ? 'sans limite de date' : 'depuis le ' + since.toLocaleDateString('fr-FR')}), ${merged.size} uniques, ${existing.length} déjà connues, ${inserted} nouvelles dont ${excluded} écartées d'office`;
     await q`update runs set finished_at = now(), ok = true, fetched = ${raw.length}, inserted = ${inserted}, message = ${message} where id = ${run.id}`;
     return { ok: true, fetched: raw.length, inserted };
   } catch (e) {

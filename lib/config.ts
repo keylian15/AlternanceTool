@@ -11,7 +11,11 @@ export const ZONES = [
 ];
 
 /** Codes ROME : études/développement, expertise SI, MOA, multimédia (jeu vidéo), data. */
-export const ROMES = ['M1805', 'M1802', 'M1806', 'E1205', 'M1403'];
+export const ROMES = ['M1805', 'M1802', 'M1806', 'E1205', 'E1104', 'M1403'];
+
+/** Intitulés informatiques : sert de 2e critère quand le code métier de l'offre n'est pas dans ROMES. */
+export const IT_TITLE =
+  /(d[ée]velopp(?:eu|eur|euse|ement)|informatique|logiciel|software|full[\s-]?stack|front[\s-]?end|back[\s-]?end|devops|\bdata\b|\bdonn[ée]es\b|\bia\b|intelligence artificielle|machine learning|deep learning|\bml\b|programmeu|jeux? vid[ée]o|\bgame|unity|unreal|python|\bjava\b|javascript|\breact\b|angular|\.net|\bcloud\b|\bweb\b|syst[èe]mes? d['’]information|cybers[ée]curit|ing[ée]nieur (?:d['’]?\s?)?(?:[ée]tudes|logiciel|syst[èe]me|recherche)|\br&d\b|tech lead|\bqa\b|\btesteur\b)/i;
 
 /** Exclusion immédiate sur l'intitulé (avant tout appel IA). "réseaux de neurones" est épargné. */
 export const EXCLUDE_TITLE =

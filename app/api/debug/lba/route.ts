@@ -13,7 +13,8 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const z = ZONES.find((x) => x.name.toLowerCase() === (sp.get('zone') ?? 'Lille').toLowerCase()) ?? ZONES[0];
   const qs = new URLSearchParams({ latitude: String(z.lat), longitude: String(z.lon), radius: String(z.radius) });
-  if (!sp.get('noromes')) qs.set('romes', ROMES.join(','));
+  if (sp.get('romes')) qs.set('romes', sp.get('romes')!);
+  else if (!sp.get('noromes')) qs.set('romes', ROMES.join(','));
   const url = `https://api.apprentissage.beta.gouv.fr/api/job/v1/search?${qs}`;
   const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
   const text = await res.text();
