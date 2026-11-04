@@ -37,7 +37,7 @@ function parse(j: any): RawOffer | null {
 }
 
 /** Interroge l'API La Bonne Alternance pour chaque zone (agrège aussi France Travail, Hellowork, etc.). */
-export async function fetchLba(): Promise<RawOffer[]> {
+export async function fetchLba(): Promise<{ offers: RawOffer[]; perZone: Record<string, number> }> {
   const token = process.env.LBA_API_TOKEN;
   if (!token) throw new Error('LBA_API_TOKEN manquant');
   const results = await Promise.all(
@@ -51,5 +51,7 @@ export async function fetchLba(): Promise<RawOffer[]> {
       return ((data?.jobs ?? []) as any[]).map(parse).filter((o): o is RawOffer => !!o);
     }),
   );
-  return results.flat();
+  const perZone: Record<string, number> = {};
+  ZONES.forEach((z, i) => { perZone[z.name] = results[i].length; });
+  return { offers: results.flat(), perZone };
 }

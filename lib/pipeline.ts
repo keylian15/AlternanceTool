@@ -14,14 +14,14 @@ const rank = (name: string) => {
 const bestUrl = (s: SourceRef[]) => [...s].sort((a, b) => rank(a.name) - rank(b.name))[0]?.url ?? null;
 
 /** Récupère les offres (7 jours au 1er lancement, puis depuis le dernier run réussi), dédoublonne et stocke. */
-export async function runFetch() {
+export async function runFetch(days?: number) {
   const q = await db();
   const [run] = await q`insert into runs(kind) values ('fetch') returning id`;
   try {
     const [last] = await q`select started_at from runs where kind = 'fetch' and ok = true order by started_at desc limit 1`;
-    const since = last ? new Date(last.started_at) : new Date(Date.now() - 7 * 864e5);
+    const since = days ? new Date(Date.now() - days * 864e5) : last ? new Date(last.started_at) : new Date(Date.now() - 7 * 864e5);
 
-    const raw = await fetchLba();
+    const { offers: raw, perZone } = await fetchLba();
     const fresh = raw.filter((o) => !o.publishedAt || new Date(o.publishedAt) >= since);
 
     const merged = new Map<string, RawOffer & { sources: SourceRef[] }>();
@@ -37,7 +37,7 @@ export async function runFetch() {
     const existing = keys.length ? await q`select id, dedupe_key, sources from offers where dedupe_key in ${q(keys)}` : [];
     const byKey = new Map(existing.map((e) => [e.dedupe_key as string, e]));
 
-    let inserted = 0;
+    let inserted = 0, excluded = 0;
     for (const [key, o] of merged) {
       const ex = byKey.get(key);
       if (ex) {
@@ -50,6 +50,7 @@ export async function runFetch() {
         continue;
       }
       const status = EXCLUDE_TITLE.test(o.title) ? 'filtered' : 'new';
+      if (status === 'filtered') excluded++;
       const email = o.email ?? findEmail(o.description);
       await q`insert into offers (dedupe_key, title, company, city, url, description, published_at, expires_at, sources, contact_email, status)
               values (${key}, ${o.title}, ${o.company}, ${o.city}, ${bestUrl(o.sources)}, ${o.description}, ${o.publishedAt}, ${o.expiresAt},
@@ -59,7 +60,9 @@ export async function runFetch() {
     }
 
     await q`update offers set status = 'expired' where status in ('new', 'scored') and expires_at is not null and expires_at < now()`;
-    await q`update runs set finished_at = now(), ok = true, fetched = ${raw.length}, inserted = ${inserted} where id = ${run.id}`;
+    const zones = Object.entries(perZone).map(([n, c]) => `${n} ${c}`).join(', ');
+    const message = `${raw.length} reçues (${zones}), ${fresh.length} dans la fenêtre depuis le ${since.toLocaleDateString('fr-FR')}, ${merged.size} uniques, ${existing.length} déjà connues, ${inserted} nouvelles dont ${excluded} écartées d'office`;
+    await q`update runs set finished_at = now(), ok = true, fetched = ${raw.length}, inserted = ${inserted}, message = ${message} where id = ${run.id}`;
     return { ok: true, fetched: raw.length, inserted };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -101,7 +104,7 @@ export async function scoreBatch(limit = 10) {
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
-      rateLimited = e instanceof GeminiError && e.status === 429;
+      rateLimited = e instanceof GeminiError && (e.status === 429 || e.status === 503);
     }
   }
   const [{ n }] = await q`select count(*)::int as n from offers where status = 'new'`;

@@ -61,7 +61,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { e
         <ul className="checks">
           {runs.map((r) => (
             <li key={r.id} className={r.ok === false ? 'ko' : r.ok ? 'ok' : ''}>
-              {fmt(r.started_at)}: {r.kind === 'fetch' ? 'récupération' : r.kind}, {r.ok ? `${r.inserted} nouvelles sur ${r.fetched}` : r.ok === false ? r.message : 'en cours'}
+              {fmt(r.started_at)}: {r.kind === 'fetch' ? 'récupération' : r.kind}, {r.ok ? (r.message ?? `${r.inserted} nouvelles sur ${r.fetched}`) : r.ok === false ? r.message : 'en cours'}
             </li>
           ))}
         </ul>
