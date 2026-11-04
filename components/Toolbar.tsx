@@ -23,7 +23,7 @@ export default function Toolbar({ pending }: { pending: number }) {
     setBusy(false);
   }
 
-  async function fetchNow(days?: number) {
+  async function fetchNow(days?: number | 'all') {
     setBusy(true);
     setMsg('Récupération des offres…');
     const r = await fetch(days ? `/api/cron/fetch?days=${days}` : '/api/cron/fetch');
@@ -38,7 +38,7 @@ export default function Toolbar({ pending }: { pending: number }) {
   return (
     <div className="toolbar">
       <button className="btn" onClick={() => fetchNow()} disabled={busy}>Récupérer les offres</button>
-      <button className="btn ghost" onClick={() => fetchNow(30)} disabled={busy}>Remonter 30 jours</button>
+      <button className="btn ghost" onClick={() => fetchNow('all')} disabled={busy}>Tout récupérer</button>
       {pending > 0 && <button className="btn ghost" onClick={scoreLoop} disabled={busy}>Scorer ({pending})</button>}
       {msg && <span className="muted" role="status">{msg}</span>}
     </div>

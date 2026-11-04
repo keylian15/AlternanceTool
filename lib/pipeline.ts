@@ -19,7 +19,10 @@ export async function runFetch(days?: number) {
   const [run] = await q`insert into runs(kind) values ('fetch') returning id`;
   try {
     const [last] = await q`select started_at from runs where kind = 'fetch' and ok = true order by started_at desc limit 1`;
-    const since = days ? new Date(Date.now() - days * 864e5) : last ? new Date(last.started_at) : new Date(Date.now() - 7 * 864e5);
+    // days: undefined = depuis le dernier run (7 j au 1er), 0 = aucune limite de date, n = n derniers jours
+    const since = days === 0 ? new Date(0)
+      : days ? new Date(Date.now() - days * 864e5)
+      : last ? new Date(last.started_at) : new Date(Date.now() - 7 * 864e5);
 
     const { offers: raw, perZone } = await fetchLba();
     const fresh = raw.filter((o) => !o.publishedAt || new Date(o.publishedAt) >= since);
@@ -61,7 +64,7 @@ export async function runFetch(days?: number) {
 
     await q`update offers set status = 'expired' where status in ('new', 'scored') and expires_at is not null and expires_at < now()`;
     const zones = Object.entries(perZone).map(([n, c]) => `${n} ${c}`).join(', ');
-    const message = `${raw.length} reçues (${zones}), ${fresh.length} dans la fenêtre depuis le ${since.toLocaleDateString('fr-FR')}, ${merged.size} uniques, ${existing.length} déjà connues, ${inserted} nouvelles dont ${excluded} écartées d'office`;
+    const message = `${raw.length} reçues (${zones}), ${fresh.length} dans la fenêtre (${days === 0 ? 'sans limite de date' : 'depuis le ' + since.toLocaleDateString('fr-FR')}), ${merged.size} uniques, ${existing.length} déjà connues, ${inserted} nouvelles dont ${excluded} écartées d'office`;
     await q`update runs set finished_at = now(), ok = true, fetched = ${raw.length}, inserted = ${inserted}, message = ${message} where id = ${run.id}`;
     return { ok: true, fetched: raw.length, inserted };
   } catch (e) {
