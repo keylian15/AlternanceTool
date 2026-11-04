@@ -28,7 +28,7 @@ const SHAPE = `{"results":[{"id":<id reçu>,"domain":"jeu vidéo|fullstack|IA|da
 export async function analyzeMany(items: AnalyzeInput[], extract = false): Promise<Analysis[]> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new GeminiError('GEMINI_API_KEY manquante', 500);
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const model = (process.env.GEMINI_MODEL || 'gemini-3.8-flash').trim().replace(/^models\//, '');
 
   const offers = items
     .map((o) => `### OFFRE id=${o.id}\nTitre: ${o.title}\nEntreprise: ${o.company}\nLieu: ${o.city}\nTexte:\n${o.description.slice(0, 3500)}`)
